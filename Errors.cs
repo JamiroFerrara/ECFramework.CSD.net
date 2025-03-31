@@ -7,7 +7,6 @@ using CSD.Framework.NetCore.Utility;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECFramework;
-//Update test
 
 public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : Entity, new()
 {
