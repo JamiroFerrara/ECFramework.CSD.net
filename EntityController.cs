@@ -231,6 +231,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             {
                 query = ApplyWhere(query, req.Expressions, null, "");
                 var items = await query.ToListAsync();
+                res.items = items;
                 res.item = items.FirstOrDefault();
                 req.Item = items.FirstOrDefault();
             }
