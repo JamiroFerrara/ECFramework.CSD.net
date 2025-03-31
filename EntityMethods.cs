@@ -80,30 +80,29 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    public T Update<T>(T item) where T : class, new()
+    public bool Update<T>(T item) where T : class, new()
     {
         IQueryable<T> query = ctx.Set<T>();
         DbSet<T> dbSet = (DbSet<T>)query;
 
-        var res = dbSet.Find(item);
         ctx.Entry(item).CurrentValues.SetValues(item);
         ctx.SaveChanges();
 
-        return res;
+        return true;
     }
 
     [NonAction]
-    public bool Remove<T>(T req) where T : class, new()
+    public bool Remove<T>(T item) where T : class, new()
     {
-        var res = new Response<T>(); //FIX: Throw error
+        var res = new Response<T>(); // Create a response object
         IQueryable<T> query = ctx.Set<T>();
         DbSet<T> dbSet = (DbSet<T>)query;
+        // Check if the entity is already tracked
+        var trackedEntity = dbSet.Local.FirstOrDefault(e => e == item);
+        if (trackedEntity != null)
+            dbSet.Remove(trackedEntity);
 
-        res.item = dbSet.Find(req);
-
-        ctx.Set<T>().Remove(res.item);
         ctx.SaveChanges();
-
         return true;
     }
 
