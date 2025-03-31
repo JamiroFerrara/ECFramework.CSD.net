@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace ECFramework;
-
 public class RequestHydrationFilter : ActionFilterAttribute
 {
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions

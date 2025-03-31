@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
-using CSD.Framework.NetCore.Service.Classes;
 using Microsoft.AspNetCore.Mvc;
-
-namespace ECFramework;
 
 public enum Permissions
 {
@@ -26,7 +23,7 @@ public class CSDPermissions : Attribute
     }
 }
 
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
+public partial class EntityController<E> : Controller where E : class, new()
 {
     [NonAction]
     public string[] GetCSDPermissons()

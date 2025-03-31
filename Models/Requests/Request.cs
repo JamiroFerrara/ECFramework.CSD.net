@@ -1,10 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CSD.Framework.NetCore.DataAccessLayer.Entities;
-using CSD.Framework.NetCore.Service.Classes;
-
-namespace ECFramework;
 
 //Used to decode string query parameters in type safe dictionary
 public enum RequestParams
@@ -26,7 +22,7 @@ public interface IRequest
     public int? PageSize { get; set; }
 }
 
-public class Request<E> : CSDRequest, IRequest where E : class
+public class Request<E> : IRequest
 {
     public E flatten { get; set; } //NOTE: this is the flattened object that gets removed in client generation.
 
@@ -50,4 +46,3 @@ public class Request<E> : CSDRequest, IRequest where E : class
     public E Item { get; set; }
     public List<E> Items { get; set; }
 }
-

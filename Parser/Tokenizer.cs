@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace ECFramework;
-
 public enum TokenType
 {
     And, Or, Not, Contains, Equals, Minor, Major, Equal, Mineq, Majeq, Identifier

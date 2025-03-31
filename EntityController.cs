@@ -1,4 +1,3 @@
-//Keep These usings
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,19 +6,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace ECFramework;
-
 [Route("api/[controller]")]
 [RequestHydrationFilter]
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
+public partial class EntityController<E> : Controller where E : class, new()
 {
     public DbContext ctx;
-    public EntityController(DbContext ctx, IConfiguration configuration) : base(configuration) { this.ctx = ctx; }
+    public EntityController(DbContext ctx, IConfiguration configuration) { this.ctx = ctx; }
 
     [NonAction]
     public async Task<Response<E>> GetItem([FromBody] Request<E> req, Func<DbSet<E>, DbSet<E>> action)
     {
-        return await Try<Response<E>>(async actions =>
+        return await Try<Response<E>>(async () =>
         {
             var ctx = this.ctx;
             var res = new Response<E>();
@@ -42,20 +39,20 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
 
             Injectables.RunGetItem(res.item, this);
 
-            res.canRead = CanRead(actions);
-            res.canWrite = CanWrite(actions);
+            // res.canRead = CanRead(actions);
+            // res.canWrite = CanWrite(actions);
 
             return res;
-        }, Permissions.Read);
+        });
     }
 
     [NonAction]
     public async Task<Response<E>> GetPage<R>(Request<R> req, Func<IQueryable<E>, IQueryable<E>> action) where R : class, new()
     {
-        return await Try<Response<E>>(async actions =>
+        return await Try<Response<E>>(async () =>
         {
-            // Get the queryable entity set
             var ctx = this.ctx;
+            // Get the queryable entity set
             IQueryable<E> query = ctx.Set<E>();
             req.PageSize = req.PageSize ?? 12;
 
@@ -85,11 +82,11 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             res.totalPages = (int)Math.Ceiling(size);
             res.totalItems = count;
 
-            res.canRead = CanRead(actions);
-            res.canWrite = CanWrite(actions);
+            // res.canRead = CanRead(actions);
+            // res.canWrite = CanWrite(actions);
 
             return res;
-        }, Permissions.Read);
+        });
     }
 
     [NonAction]
@@ -112,7 +109,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     [NonAction]
     public async Task<Response<E>> Create(List<E> items, Request<E> req, Func<DbSet<E>, DbSet<E>> action)
     {
-        return await Try<Response<E>>(async actions =>
+        return await Try<Response<E>>(async () =>
         {
             var ctx = this.ctx;
             var res = new Response<E>();
@@ -132,13 +129,13 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             res.items = items;
 
             return res;
-        }, Permissions.Write);
+        });
     }
 
-    [NonAction]
+    [NonAction] //FIX: Multi update is broken and need to re-think this
     public async Task<Response<E>> Update([FromBody] Request<E> req, Func<IQueryable<E>, IQueryable<E>> action)
     {
-        return await Try<Response<E>>(async actions =>
+        return await Try<Response<E>>(async () =>
         {
             var ctx = this.ctx;
             var res = new Response<E>(); //FIX: Throw error
@@ -149,7 +146,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             // If there are filters, dynamically apply them
             if (req.Expressions != null && req.Expressions.Count() > 0 && req.Items == null)
             {
-                query = ApplyWhere(query, req.Expressions, null, "");
+                query = ApplyWhere(query, req.Expressions, null, "", true);
                 res.item = query.FirstOrDefault();
             }
 
@@ -160,21 +157,21 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
                 await ctx.SaveChangesAsync();
             }
 
-            //TODO: Multiple updates?
+            //TODO: Multiupdates
 
-            res.canRead = CanRead(actions);
-            res.canWrite = CanWrite(actions);
+            // res.canRead = CanRead(actions);
+            // res.canWrite = CanWrite(actions);
 
             res.item = req.Item;
             return res;
-        }, Permissions.Write);
+        });
     }
 
 
     [NonAction]
     public virtual async Task<Response<E>> Delete([FromBody] Request<E> req, Func<IQueryable<E>, IQueryable<E>> action)
     {
-        return await Try<Response<E>>(async actions =>
+        return await Try<Response<E>>(async () =>
         {
             var ctx = this.ctx;
             var res = new Response<E>(); //FIX: Throw error
@@ -206,17 +203,17 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
 
             await ctx.SaveChangesAsync();
 
-            res.canRead = CanRead(actions);
-            res.canWrite = CanWrite(actions);
+            // res.canRead = CanRead(actions);
+            // res.canWrite = CanWrite(actions);
 
-            return new Response<E>();
-        }, Permissions.Write);
+            return res;
+        });
     }
 
     [NonAction]
     public virtual async Task<Response<E>> LogicalDelete([FromBody] Request<E> req, Func<IQueryable<E>, IQueryable<E>> action)
     {
-        return await Try<Response<E>>(async actions =>
+        return await Try<Response<E>>(async () =>
         {
             var ctx = this.ctx;
             var res = new Response<E>();
@@ -228,10 +225,8 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             if (req.Expressions != null && req.Expressions.Count > 0)
             {
                 query = ApplyWhere(query, req.Expressions, null, "");
-                var items = await query.ToListAsync();
-                res.items = items;
-                res.item = items.FirstOrDefault();
-                req.Item = items.FirstOrDefault();
+                res.items = await query.ToListAsync();
+                req.Items = await query.ToListAsync();
             }
 
             Injectables.RunLogicalDelete(res.item, this);
@@ -240,10 +235,10 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
 
             await ctx.SaveChangesAsync();
 
-            res.canRead = CanRead(actions);
-            res.canWrite = CanWrite(actions);
+            // res.canRead = CanRead(actions);
+            // res.canWrite = CanWrite(actions);
 
             return res;
-        }, Permissions.Write);
+        });
     }
 }

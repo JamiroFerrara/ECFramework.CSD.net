@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 
-namespace ECFramework;
-
 public static class DictionaryExtensions
 {
     public static bool TryGetValueAs<T>(this IDictionary<string, object> dict, string key, out T result)

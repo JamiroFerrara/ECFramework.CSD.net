@@ -1,9 +1,6 @@
 using System.Collections.Generic;
-using CSD.Framework.NetCore.Service.Classes;
 
-namespace ECFramework;
-
-public class Response<E> : CSDResponse
+public class Response<E>
 {
     public List<E> items { get; set; }
     public E item { get; set; }
@@ -12,6 +9,7 @@ public class Response<E> : CSDResponse
 
     public byte[] file { get; set; }
     public string fileName { get; set; }
+    public string error { get; set; }
 
     public bool canRead { get; set; }
     public bool canWrite { get; set; }

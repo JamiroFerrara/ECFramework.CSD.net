@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 
-namespace ECFramework;
-
 //   [0]: {Token}
 //     Type: And
 //     Value: "&"

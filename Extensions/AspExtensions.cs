@@ -5,8 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 
-namespace ECFramework;
-
 public static class AspExtensions
 {
     public async static Task<string> GenerateSwaggerFile(this IApplicationBuilder app)

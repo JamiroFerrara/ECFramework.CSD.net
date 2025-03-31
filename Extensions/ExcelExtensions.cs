@@ -6,8 +6,6 @@ using System.Reflection;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 
-namespace ECFramework;
-
 public static class ExcelExtensions
 {
     /// <summary>

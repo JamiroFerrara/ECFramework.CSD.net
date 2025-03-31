@@ -9,14 +9,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
-namespace ECFramework;
-
 public static class DapperDbContextExtensions
 {
     //Dynamic Type
     public static async Task<IEnumerable<dynamic>> QueryAsync(
         this DbContext context,
         string text,
+        CancellationToken ct = default(CancellationToken),
         object parameters = null,
         int? timeout = null,
         CommandType? type = null
@@ -28,7 +27,7 @@ public static class DapperDbContextExtensions
             parameters,
             timeout,
             type,
-            default(CancellationToken)
+            ct
         );
 
         var connection = context.Database.GetDbConnection();

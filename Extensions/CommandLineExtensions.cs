@@ -1,8 +1,6 @@
 using System;
 using System.Diagnostics;
 
-namespace ECFramework;
-
 public static class StringExtensions
 {
     public static string Run(this string command)

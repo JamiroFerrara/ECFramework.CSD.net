@@ -1,34 +1,68 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.AspNetCore.Mvc.Abstractions;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.AspNetCore.Mvc.Internal;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Routing.Matching;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace ECFramework;
-
-public class CustomActionSelector : ActionSelector, IActionSelector
+public class RequestBodyEndpointSelector : EndpointSelector
 {
-    readonly IEnumerable<ActionDescriptor> _actions;
-    public CustomActionSelector(IActionDescriptorCollectionProvider actionDescriptorCollectionProvider,
-        ActionConstraintCache actionConstraintCache, ILoggerFactory loggerFactory)
-        : base(actionDescriptorCollectionProvider, actionConstraintCache, loggerFactory)
+    readonly IEnumerable<Endpoint> _controllerEndPoints;
+    readonly EndpointSelector _defaultSelector;
+    public RequestBodyEndpointSelector(EndpointSelector defaultSelector, EndpointDataSource endpointDataSource)
     {
-        _actions = actionDescriptorCollectionProvider.ActionDescriptors.Items;
+        _defaultSelector = defaultSelector;
+        _controllerEndPoints = endpointDataSource.Endpoints
+            .Where(e => e.Metadata.GetMetadata<ControllerActionDescriptor>() != null).ToList();
     }
 
-    ActionDescriptor IActionSelector.SelectBestCandidate(RouteContext context, IReadOnlyList<ActionDescriptor> candidates)
+    public override async Task SelectAsync(HttpContext httpContext, CandidateSet candidates)
     {
-        // Custom logic to prioritize one method over the other
-        if (candidates.Count != 1)
+        // Custom logic for selecting the endpoint
+        if (candidates.Count == 2)
         {
-            var customAction = candidates.FirstOrDefault(a => !a.DisplayName.Contains("_"));
-            if (customAction != null)
-                return customAction; // Give priority to this action
+            // Get the candidate state at index i
+            var candidate0 = candidates[0];
+            var candidate1 = candidates[1];
+
+            // Assuming that the candidate has an associated Endpoint, we check its DisplayName
+            if (candidate0.Endpoint != null && candidate0.Endpoint.DisplayName != null && !candidate0.Endpoint.DisplayName.Contains("_"))
+                candidates.SetValidity(0, true); // Mark the current candidate as valid
+            else
+                candidates.SetValidity(0, false); // Mark the current candidate as valid
+
+            if (candidate1.Endpoint != null && candidate1.Endpoint.DisplayName != null && !candidate1.Endpoint.DisplayName.Contains("_"))
+                candidates.SetValidity(1, true); // Mark the current candidate as valid
+            else
+                candidates.SetValidity(1, false); // Mark the current candidate as valid
+
+            await _defaultSelector.SelectAsync(httpContext, candidates);
+            var selectedEndpoint = httpContext.GetEndpoint();
+            return;
         }
 
         // Fallback to default behavior if no specific action is found
-        return this.SelectBestCandidate(context, candidates);
+        await _defaultSelector.SelectAsync(httpContext, candidates);
+    }
+}
+
+//define an extension method for registering conveniently
+public static class EndpointSelectorServiceCollectionExtensions
+{
+    public static IServiceCollection AddRequestBodyEndpointSelector(this IServiceCollection services)
+    {
+        //build a dummy service container to get an instance of 
+        //the DefaultEndpointSelector
+        var sc = new ServiceCollection();
+        sc.AddMvc();
+        var defaultEndpointSelector = sc.BuildServiceProvider().GetRequiredService<EndpointSelector>();
+        return services.Replace(new ServiceDescriptor(typeof(EndpointSelector),
+                                sp => new RequestBodyEndpointSelector(defaultEndpointSelector,
+                                                                      sp.GetRequiredService<EndpointDataSource>()),
+                                ServiceLifetime.Singleton));
     }
 }

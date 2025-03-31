@@ -4,18 +4,12 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
-using CSD.Framework.NetCore.DataAccessLayer.Entities;
-using CSD.Framework.NetCore.Service.Classes;
-using Microsoft.AspNetCore.Cors;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
-namespace ECFramework;
-
 //NOTE: Utility methods for CSD Crud controller 
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
+public partial class EntityController<E> where E : class, new()
 {
     [HttpGet("GetItem")]
     public virtual async Task<Response<E>> _GetItem([FromQuery] Request<E> req) => await GetItem(req, query => query);
@@ -34,33 +28,6 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
 
     [HttpDelete("Delete")]
     public virtual async Task<Response<E>> _Delete([FromQuery] Request<E> req, [FromBody] List<E>? items = null) { req.Items = items; return await Delete(req, query => query); }
-
-    [NonAction] //NOTE: CSDPermisson handling 
-    public async Task<R> Try<R>(Func<List<string>, Task<R>> action, Permissions permission) where R : CSDResponse, new()
-    {
-        var res = new R();
-        //Error handling is in this try extension
-        return await Try<R>(async () =>
-        {
-            if (Debug.IgnorePermissions) //TODO: Inject fake user in cookies here
-                return await action(new List<string>());
-
-            return await CSDAuthRead<R>(async actions =>
-            {
-                if (permission == Permissions.Read)
-                    if (CanRead(actions))
-                        return await action(actions);
-                    else
-                        res.SetResponse(new CSDResponse { Rc = 11, RcDescription = Permissions.Read.GetDescription() });
-                if (permission == Permissions.Write)
-                    if (CanRead(actions) && CanWrite(actions))
-                        return await action(actions);
-                    else
-                        res.SetResponse(new CSDResponse { Rc = 12, RcDescription = Permissions.Write.GetDescription() });
-                return res;
-            });
-        });
-    }
 
     [NonAction]
     public static IQueryable<E> ApplyExpressionTree<E>(IQueryable<E> query, string key, List<ExpressionNode> expressions, PropertyInfo? sub_property, string sub_key, bool equality_only)
@@ -345,3 +312,4 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
         return item;
     }
 }
+

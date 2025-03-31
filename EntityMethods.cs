@@ -4,9 +4,7 @@ using System.Linq.Expressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace ECFramework;
-
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
+public partial class EntityController<E> : Controller where E : class, new()
 {
     [NonAction]
     public IQueryable<T> Where<T>(Expression<Func<T, bool>> predicate) where T : class, new()

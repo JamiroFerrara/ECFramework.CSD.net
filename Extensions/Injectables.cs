@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 
-namespace ECFramework;
-
 public static class Injectables
 {
     // A list of generic actions that can apply to any entity type

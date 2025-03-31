@@ -2,8 +2,6 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace ECFramework;
-
 public class JsonElementConverter : JsonConverter<object>
 {
     public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

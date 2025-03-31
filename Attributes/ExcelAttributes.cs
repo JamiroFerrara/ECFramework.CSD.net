@@ -1,8 +1,6 @@
 using System;
 using System.Linq;
 
-namespace ECFramework;
-
 [AttributeUsage(AttributeTargets.Property)]
 public class ExcelAlias : Attribute
 {
