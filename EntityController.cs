@@ -198,11 +198,15 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             if (req.Items != null)
                 foreach (var item in req.Items)
                 {
-                    var found_item = dbSet.Find(item);
-                    Injectables.RunDelete(found_item, this);
-                    dbSet.Remove(found_item);
-                    await ctx.SaveChangesAsync();
+                    var found_item = dbSet.Local.FirstOrDefault(e => e == item);
+                    if (found_item != null)
+                    {
+                        Injectables.RunDelete(found_item, this);
+                        dbSet.Remove(found_item);
+                    }
                 }
+
+            await ctx.SaveChangesAsync();
 
             res.canRead = CanRead(actions);
             res.canWrite = CanWrite(actions);
