@@ -63,7 +63,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    public static IQueryable<E> ApplyExpressionTree<E>(IQueryable<E> query, string key, List<ExpressionNode> expressions, PropertyInfo? sub_property, string sub_key)
+    public static IQueryable<E> ApplyExpressionTree<E>(IQueryable<E> query, string key, List<ExpressionNode> expressions, PropertyInfo? sub_property, string sub_key, bool equality_only)
     {
         if (expressions == null || expressions.Count == 0)
             return query;
@@ -73,7 +73,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
 
         foreach (var expr in expressions)
         {
-            var exp = BuildExpression<E>(expr, key, parameter, sub_property, sub_key);
+            var exp = BuildExpression<E>(expr, key, parameter, sub_property, sub_key, equality_only);
             if (exp == null) continue;
 
             switch (expr)
@@ -111,7 +111,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    private static Expression BuildExpression<E>(ExpressionNode node, string key, ParameterExpression parameter, PropertyInfo? sub_property, string sub_key)
+    private static Expression BuildExpression<E>(ExpressionNode node, string key, ParameterExpression parameter, PropertyInfo? sub_property, string sub_key, bool equality_only)
     {
         var current_key = sub_key == "" ? key : sub_key;
         var entityType = typeof(E);
@@ -131,14 +131,14 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
         switch (node)
         {
             case IdentifierExpression idExpr:
-                return MatchExpression(propertyAccess, idExpr.Value, true, key);
+                return MatchExpression(propertyAccess, idExpr.Value, true, key, equality_only);
             case UnaryExpression unaryExpr:
-                var operand = BuildExpression<E>(unaryExpr.Operand, key, parameter, sub_property, sub_key);
+                var operand = BuildExpression<E>(unaryExpr.Operand, key, parameter, sub_property, sub_key, equality_only);
                 if (operand == null) return null;
 
                 return unaryExpr.Operator switch
                 {
-                    TokenType.Contains => MatchExpression(propertyAccess, ((IdentifierExpression)unaryExpr.Operand).Value, false, key),
+                    TokenType.Contains => MatchExpression(propertyAccess, ((IdentifierExpression)unaryExpr.Operand).Value, false, key, equality_only),
                     TokenType.Not => Expression.Not(operand),
                     _ => operand
                 };
@@ -148,7 +148,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    private static Expression MatchExpression(Expression propertyAccess, object value, bool equals, string key)
+    private static Expression MatchExpression(Expression propertyAccess, object value, bool equals, string key, bool equality_only)
     {
         var type = propertyAccess.Type;
 
@@ -186,6 +186,9 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
         else if (type == typeof(string) && value is string stringValue)
         {
             var method = typeof(string).GetMethod(equals ? "Equals" : "Contains", new[] { typeof(string) });
+            if (equality_only)
+                method = typeof(string).GetMethod("Equals", new[] { typeof(string) });
+
             return Expression.Call(propertyAccess, method, Expression.Constant(stringValue));
         }
         else
@@ -206,7 +209,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    public IQueryable<E> ApplyWhere(IQueryable<E> query, Dictionary<string, object> filters, PropertyInfo? sub_property, string sub_key)
+    public IQueryable<E> ApplyWhere(IQueryable<E> query, Dictionary<string, object> filters, PropertyInfo? sub_property, string sub_key, bool equality_only = false)
     {
         if (sub_property == null)
             filters = filters.Where(f => typeof(E).GetProperties().ToList().Any(p => p.Name.ToLower() == f.Key.ToLower())).ToDictionary(d => d.Key, d => d.Value);
@@ -217,7 +220,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
         {
             if (filter.Value is List<ExpressionNode> expressions)
             {
-                query = ApplyExpressionTree(query, filter.Key, expressions, sub_property, sub_key);
+                query = ApplyExpressionTree(query, filter.Key, expressions, sub_property, sub_key, equality_only);
                 continue;
             }
             else if (filter.Value is Dictionary<string, object> subFilters)
@@ -225,7 +228,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
                 var type = typeof(E);
                 var prop = type.GetProperty(filter.Key, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
-                query = ApplyWhere(query, subFilters, prop, filter.Key);
+                query = ApplyWhere(query, subFilters, prop, filter.Key, equality_only);
                 continue;
             }
         }

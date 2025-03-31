@@ -187,7 +187,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             // If there are filters, dynamically apply them
             if (req.Expressions != null && req.Expressions.Count() > 0 && req.Items == null)
             {
-                query = ApplyWhere(query, req.Expressions, null, "");
+                query = ApplyWhere(query, req.Expressions, null, "", true);
                 var items = await query.ToListAsync();
 
                 res.items = items;
