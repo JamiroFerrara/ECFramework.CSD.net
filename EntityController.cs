@@ -160,9 +160,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
                 await ctx.SaveChangesAsync();
             }
 
-            //Multi update
-            if (req.Items != null)
-                MultiUpdate(ctx, dbSet, req);
+            //TODO: Multiple updates?
 
             res.canRead = CanRead(actions);
             res.canWrite = CanWrite(actions);

@@ -1,0 +1,1 @@
+- [ ] Remove client + bun_client, figure out something nice from Frontend

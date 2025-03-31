@@ -344,26 +344,4 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
 
         return item;
     }
-
-    [NonAction]
-    private void MultiUpdate(DbContext ctx, DbSet<E> dbSet, dynamic req)
-    {
-        for (int i = 0; i < req.Items.Count; i++)
-        {
-            var items = req.Where["Items"] as JArray;
-            var list_items = items.Select(token => token.ToObject<E>()).ToList();
-            if (list_items != null)
-            {
-                var item = list_items[i];
-                var found_item = dbSet.Find(item);
-                ctx.Entry(found_item).CurrentValues.SetValues(req.Items[i]);
-
-                //Set the ModDate for all items
-                foreach (var element in list_items)
-                    Injectables.RunUpdate(element, this);
-
-                ctx.SaveChanges();
-            }
-        }
-    }
 }
