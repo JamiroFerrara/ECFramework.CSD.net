@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
+using CSD.Framework.NetCore.DataAccessLayer.Entities;
 using CSD.Framework.NetCore.Service.Classes;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
@@ -14,10 +15,10 @@ using Newtonsoft.Json.Linq;
 namespace ECFramework;
 
 //NOTE: Utility methods for CSD Crud controller 
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : Entity, new()
+public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
 {
     [HttpGet("GetItem")]
-    public virtual async Task<Response<E>> GetItem([FromQuery] Request<E> req) => await GetItem(req, query => query);
+    public virtual async Task<Response<E>> _GetItem([FromQuery] Request<E> req) => await GetItem(req, query => query);
 
     [HttpGet("GetPage")]
     public virtual async Task<Response<E>> _GetPage([FromQuery] Request<E> req) => await GetPage(req, query => query);
@@ -26,10 +27,10 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     public virtual async Task<Response<E>> _GetExcel([FromQuery] Request<E> req) => await GetExcel(req, query => query);
 
     [HttpPost("Create")]
-    public virtual async Task<Response<E>> Create([FromBody] List<E> items) => await Create(items, new Request<E>(), query => query);
+    public virtual async Task<Response<E>> _Create([FromBody] List<E> items) => await Create(items, new Request<E>(), query => query);
 
     [HttpPatch("Update")]
-    public async Task<Response<E>> Update([FromBody] Request<E> req) => await Update(req, query => query);
+    public async Task<Response<E>> _Update([FromBody] Request<E> req) => await Update(req, query => query);
 
     [HttpDelete("Delete")]
     public virtual async Task<Response<E>> _Delete([FromQuery] Request<E> req, [FromBody] List<E>? items = null) { req.Items = items; return await Delete(req, query => query); }
@@ -350,31 +351,14 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             var list_items = items.Select(token => token.ToObject<E>()).ToList();
             if (list_items != null)
             {
-                var item = list_items[i] as IKeyable;
-                var found_item = dbSet.Find(item.GetKeys());
+                var item = list_items[i];
+                var found_item = dbSet.Find(item);
                 ctx.Entry(found_item).CurrentValues.SetValues(req.Items[i]);
 
                 //Set the ModDate for all items
                 foreach (var element in list_items)
                     Injectables.RunUpdate(element, this);
 
-                ctx.SaveChanges();
-            }
-        }
-    }
-
-    [NonAction]
-    private void MultiDelete(DbContext ctx, DbSet<E> dbSet, Request<E> req)
-    {
-        for (int i = 0; i < req.Items.Count; i++)
-        {
-            var items = req.Items;
-            if (items != null)
-            {
-                var item = items[i] as IKeyable;
-                var found_item = dbSet.Find(item.GetKeys());
-                Injectables.RunDelete(found_item, this);
-                dbSet.Remove(found_item);
                 ctx.SaveChanges();
             }
         }

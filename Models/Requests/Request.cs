@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CSD.Framework.NetCore.DataAccessLayer.Entities;
 using CSD.Framework.NetCore.Service.Classes;
 
 namespace ECFramework;
@@ -25,7 +26,7 @@ public interface IRequest
     public int? PageSize { get; set; }
 }
 
-public class Request<E> : CSDRequest, IRequest, IKeyable where E : IKeyable
+public class Request<E> : CSDRequest, IRequest where E : class
 {
     public E flatten { get; set; } //NOTE: this is the flattened object that gets removed in client generation.
 
@@ -48,24 +49,5 @@ public class Request<E> : CSDRequest, IRequest, IKeyable where E : IKeyable
     //Used in update operations to update single/multiple items
     public E Item { get; set; }
     public List<E> Items { get; set; }
-
-    public object[] GetKeys()
-    {
-        if (Like != null) //This might be useless since i can parse the where clause before hand.
-            //NOTE: Conversion mechanism since ASP sometimes converts incorrectly
-            return Like.Values.Select(value =>
-            {
-                if (value is long)
-                    return Convert.ToInt32(value);
-                if (value is string stringValue && Guid.TryParse(stringValue, out Guid guidValue))
-                    return guidValue;
-                return value;
-            }).ToArray();
-
-        else if (Item != null)
-            return Item.GetKeys();
-        else
-            return [];
-    }
 }
 

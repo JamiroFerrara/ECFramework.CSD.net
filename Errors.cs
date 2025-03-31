@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ECFramework;
 
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : Entity, new()
+public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
 {
     [NonAction] //TODO: This should become async by default
     public async Task<R> Try<R>(Func<Task<R>> action) where R : CSDResponse, new()

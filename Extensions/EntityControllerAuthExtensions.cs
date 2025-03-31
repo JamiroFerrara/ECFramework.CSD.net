@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ECFramework;
 
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : Entity, new()
+public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController
 {
     public CSDContext CSDContext;
 

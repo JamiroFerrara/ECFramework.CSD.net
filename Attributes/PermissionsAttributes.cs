@@ -26,7 +26,7 @@ public class CSDPermissions : Attribute
     }
 }
 
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : Entity, new()
+public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
 {
     [NonAction]
     public string[] GetCSDPermissons()

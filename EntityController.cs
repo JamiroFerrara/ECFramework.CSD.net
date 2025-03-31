@@ -11,7 +11,7 @@ namespace ECFramework;
 
 [Route("api/[controller]")]
 [RequestHydrationFilter]
-public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : Entity, new()
+public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController where E : class, new()
 {
     public DbContext ctx;
     public EntityController(DbContext ctx, IConfiguration configuration) : base(configuration) { this.ctx = ctx; }
@@ -50,7 +50,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    public async Task<Response<E>> GetPage<R>(Request<R> req, Func<IQueryable<E>, IQueryable<E>> action) where R : Entity, new()
+    public async Task<Response<E>> GetPage<R>(Request<R> req, Func<IQueryable<E>, IQueryable<E>> action) where R : class, new()
     {
         return await Try<Response<E>>(async actions =>
         {
@@ -93,7 +93,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     }
 
     [NonAction]
-    public async Task<Response<E>> GetExcel<R>(Request<R> req, Func<IQueryable<E>, IQueryable<E>> action) where R : Entity, new()
+    public async Task<Response<E>> GetExcel<R>(Request<R> req, Func<IQueryable<E>, IQueryable<E>> action) where R : class, new()
     {
         req.Page = 0;
         req.PageSize = 999999999; //Max int
@@ -146,10 +146,6 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             query = action(query);
             DbSet<E> dbSet = (DbSet<E>)query;
 
-            //If id is present filter on that.
-            // if (req.Id != Guid.Empty)
-            // res.item = dbSet.Find(req.GetKeys());
-
             // If there are filters, dynamically apply them
             if (req.Expressions != null && req.Expressions.Count() > 0 && req.Items == null)
             {
@@ -188,27 +184,25 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             query = action(query);
             DbSet<E> dbSet = (DbSet<E>)query;
 
-            //If id is present filter on that.
-            // if (req.Id != Guid.Empty)
-            // res.item = dbSet.Find(req.GetKeys());
-
             // If there are filters, dynamically apply them
             if (req.Expressions != null && req.Expressions.Count() > 0 && req.Items == null)
             {
                 query = ApplyWhere(query, req.Expressions, null, "");
-                res.items = await query.ToListAsync();
-                req.Items = await query.ToListAsync();
-            }
-            if (res.item != null)
-            {
-                Injectables.RunDelete(res.item, this);
-                ctx.Set<E>().Remove(res.item);
-                await ctx.SaveChangesAsync();
+                var items = await query.ToListAsync();
+
+                res.items = items;
+                req.Items = items;
             }
 
             //Multi Delete
             if (req.Items != null)
-                MultiDelete(ctx, dbSet, req);
+                foreach (var item in req.Items)
+                {
+                    var found_item = dbSet.Find(item);
+                    Injectables.RunDelete(found_item, this);
+                    dbSet.Remove(found_item);
+                    await ctx.SaveChangesAsync();
+                }
 
             res.canRead = CanRead(actions);
             res.canWrite = CanWrite(actions);
@@ -227,10 +221,6 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             IQueryable<E> query = ctx.Set<E>();
             DbSet<E> dbSet = (DbSet<E>)query;
             query = action(query);
-
-            //If id is present filter on that.
-            // if (req.Id != new Guid())
-            // res.item = dbSet.Find(req.GetKeys());
 
             // If there are filters, dynamically apply them
             if (req.Expressions != null && req.Expressions.Count > 0)
