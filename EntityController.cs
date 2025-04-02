@@ -195,7 +195,7 @@ public partial class EntityController<E> : Controller where E : class, new()
             if (req.Items != null)
                 foreach (var item in req.Items)
                 {
-                    var found_item = dbSet.Local.FirstOrDefault(e => e == item);
+                    var found_item = dbSet.FirstOrDefault(e => e == item);
                     if (found_item != null)
                     {
                         Injectables.RunDelete(found_item, this);
