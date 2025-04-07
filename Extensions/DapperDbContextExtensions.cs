@@ -42,7 +42,7 @@ public static class DapperDbContextExtensions
     )
     {
         var connection = context.Database.GetDbConnection();
-        return parameters == null ? Dapper.SqlMapper.Query(connection, text) : Dapper.SqlMapper.Query(connection, text, parameters);
+        return parameters == null ? Dapper.SqlMapper.Query(connection, text) : Dapper.SqlMapper.Query(connection, text, parameters, null, true, 300);
     }
 
     //Explicit Type
