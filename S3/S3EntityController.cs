@@ -65,7 +65,8 @@ public partial class EntityController<E> : Controller where E : class, new()
 
             putRequest.UploadProgressEvent += async (s, e) =>
             {
-                await this.hubContext.Clients.Client(connectionId).SendAsync("ReceiveProgress", (int)((e.TransferredBytes / (double)e.TotalBytes) * 100));
+                if (connectionId != null)
+                    await this.hubContext.Clients.Client(connectionId).SendAsync("ReceiveProgress", (int)((e.TransferredBytes / (double)e.TotalBytes) * 100));
             };
 
             await fileTransferUtility.UploadAsync(putRequest);
