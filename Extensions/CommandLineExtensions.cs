@@ -11,7 +11,8 @@ public static class StringExtensions
             Arguments = $"-c \"{command}\"",   // Pass the command as an argument to the interpreter
             RedirectStandardOutput = true,     // Redirect standard output
             UseShellExecute = false,           // Don't use the default shell execution
-            CreateNoWindow = true              // Don't create a new window for the process
+            CreateNoWindow = true,              // Don't create a new window for the process
+            WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory // Set the working directory to the binary directory
         };
 
         Process process = new Process { StartInfo = processStartInfo };
