@@ -60,6 +60,7 @@ public partial class EntityController<E> : Controller where E : class, new()
                 Key = key,
                 InputStream = stream,
                 ContentType = s3Item.MimeType,
+                DisablePayloadSigning = true,
                 DisableDefaultChecksumValidation = true //NOTE: This is disabled, not needed for putRequest
             };
 
