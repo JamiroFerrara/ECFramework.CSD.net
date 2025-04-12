@@ -69,6 +69,7 @@ public class RequestHydrationFilter : ActionFilterAttribute
 
             string prefix = "";
             string expression = key_value[1];
+            if (expression == "%") continue; // Skip if expression is just a percent sign
             var tree = ParseTree(expression);
 
             string key = prefix + key_value[0];
