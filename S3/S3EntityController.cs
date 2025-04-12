@@ -6,17 +6,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Builder;
 
-//NOTE: SignalR Upload Progress hub + Extension -> app.AddUploadHub()
-public class UploadProgressHub : Hub { public async Task SendProgress(string connectionId, string message) => await Clients.Client(connectionId).SendAsync("ReceiveProgress", message); }
-public static class UploadHubExtensions { public static void AddUploadHub(this IApplicationBuilder app) { app.UseEndpoints(endpoints => { endpoints.MapHub<UploadProgressHub>("/uploadProgress"); }); } }
-
 public partial class EntityController<E> : Controller where E : class, new()
 {
     public IAmazonS3 s3Client;
-    private readonly IHubContext<UploadProgressHub> _hubContext;
-    private IHubContext<UploadProgressHub> hubContext;
+    private IHubContext<S3UploadProgressHub, IS3UploadProgressHub> hubContext;
 
-    public EntityController(IHubContext<UploadProgressHub> hubContext, IAmazonS3 s3Client, DbContext ctx, IConfiguration configuration)
+    public EntityController(IHubContext<S3UploadProgressHub, IS3UploadProgressHub> hubContext, IAmazonS3 s3Client, DbContext ctx, IConfiguration configuration)
     {
         this.s3Client = s3Client;
         this.ctx = ctx;
@@ -49,6 +44,7 @@ public partial class EntityController<E> : Controller where E : class, new()
         s3Item.Id = Guid.NewGuid();
         string key = $"{s3Item.Id}/{s3Item.Name}";
 
+        var client = this.hubContext.Clients.Client(connectionId);
         using (var stream = s3Item.file.OpenReadStream())
         {
             stream.Position = 0; // Ensure correct read position
@@ -67,10 +63,14 @@ public partial class EntityController<E> : Controller where E : class, new()
             putRequest.UploadProgressEvent += async (s, e) =>
             {
                 if (connectionId != null)
-                    await this.hubContext.Clients.Client(connectionId).SendAsync("ReceiveProgress", (int)((e.TransferredBytes / (double)e.TotalBytes) * 100));
+                {
+                    await client.onProgress(((e.TransferredBytes / (double)e.TotalBytes) * 100).ToString());
+                    await client.onMessage("Uploading to bucket..");
+                }
             };
 
             await fileTransferUtility.UploadAsync(putRequest);
+            await client.onMessage("Upload complete!");
         }
 
         query.Add(item);
