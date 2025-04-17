@@ -20,7 +20,8 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController
         var request = JsonSerializer.Deserialize<CSDContext>(headers);
         this.CSDContext = request;
 
-        Console.WriteLine("CSDContext: " + request);
+        if (this.CSDContext == null)
+            throw new Exception("Unable to deserialize CSDContext");
 
         return await Try<R>(() =>
         {
