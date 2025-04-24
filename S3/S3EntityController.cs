@@ -19,7 +19,7 @@ public partial class EntityController<E> : Controller where E : class, new()
     }
 
     [HttpPost("Upload")]
-    public virtual async Task<Response<E>> _Upload([FromForm] E item, string connectionId) => await Upload(item, connectionId, query => query);
+    public virtual async Task<Response<E>> _Upload(E item, string connectionId) => await Upload(item, connectionId, query => query);
 
     [NonAction]
     public virtual async Task<Response<E>> Upload(E item, string connectionId, Func<DbSet<E>, DbSet<E>> action)
