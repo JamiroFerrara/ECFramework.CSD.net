@@ -406,7 +406,7 @@ public class ActionService
         }
         foreach (DataRow row in ((IDataProviderQueryGenerica)new CSDFrameworkPMSPatch.DataProviderQueryGenerica(Db, Ctx)).GetDatiQueryGenericaTBSicurezza(text, new Dictionary<string, object>()).Tables[0].Rows)
         {
-            list.Add(row.ItemArray[0].ToString().Split('|').ToList().Last());
+            list.Add(row.ItemArray[0].ToString());
         }
         return list;
     }
