@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CSD.Framework.NetCore.Service.Classes;
@@ -47,8 +48,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController
     private List<string> GetActions(CSDContext ctx)
     {
         string appid = ctx.application.CodApplicazione.ToString();
-        List<string> AzioniUtente = new CSDFrameworkPMSPatch.ActionService(ctx).GetActionsForUser(ctx.user.CodiceUtente, ctx.user.CodiceAbiDefault, appid)
-            .Select(x => x.Split('|').ToList().Last()).ToList();
+        List<string> AzioniUtente = new CSDFrameworkPMSPatch.ActionService(ctx).GetActionsForUser(ctx.user.CodiceUtente, ctx.user.CodiceAbiDefault, appid).Select(x => x.Split('|').ToList().Last()).ToList();
 
         if (!AzioniUtente.Contains("ACCESSO"))
             throw new UnauthorizedException();
