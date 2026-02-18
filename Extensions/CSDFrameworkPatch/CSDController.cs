@@ -564,7 +564,7 @@ public class DataProviderNetCoreConfig : IDataProviderNetCoreConfig
     {
         EntityDatabaseConfig entityDatabaseConfig = null;
         Configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
-        AppEnvironment env = CtxEnvironment.GetCurrentEnvironment() == AppEnvironment.DEVE ? AppEnvironment.TEST : CtxEnvironment.GetCurrentEnvironment();
+        AppEnvironment env = CtxEnvironment.GetCurrentEnvironment();
         entityDatabaseConfig = ConfigurationCacheStorage.GetConnetion(env, dbtype, ctx.user.CodiceHolding, ctx.user.CodiceAbiDefault, ctx.application.CodApplicazione);
         if (entityDatabaseConfig != null)
         {
