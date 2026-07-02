@@ -437,3 +437,4 @@ server/client/client.ts
 server/swagger.json
 server/C:*
 
+.gitnexus

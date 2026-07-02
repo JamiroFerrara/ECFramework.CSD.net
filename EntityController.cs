@@ -66,7 +66,7 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
             query = ApplyIncludes(query, ctx);
             query = ApplyOrderBy(query, req.OrderBy);
 
-            // Apply pagination
+            // Apply paginationE
             var res = new Response<E>();
 
             query = action(query);
@@ -95,6 +95,23 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     [NonAction]
     public async Task<Response<E>> GetExcel<R>(Request<R> req, Func<IQueryable<E>, IQueryable<E>> action) where R : class, new()
     {
+        // If Items provided, generate Excel from those items
+        if (req.Items != null && req.Items.Count > 0)
+        {
+            return await Try<Response<E>>(async actions =>
+            {
+                var res = new Response<E>();
+                
+                string fileName = typeof(E).Name + ".xlsx";
+                byte[] excel = req.Items.ToExcel(fileName, req.Schema);
+                
+                res.file = excel;
+                res.fileName = fileName;
+                return res;
+            }, Permissions.Read);
+        }
+        
+        // Fallback to original query-based flow
         req.Page = 0;
         req.PageSize = 999999999; //Max int
         var res = await this.GetPage<R>(req, action);
@@ -160,7 +177,15 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
                 await ctx.SaveChangesAsync();
             }
 
-            //TODO: Multiple updates?
+            if (req.Items != null)
+            {
+                foreach (var item in req.Items)
+                {
+                    Injectables.RunUpdate(item, this);
+                    ctx.Set<E>().Update(item);
+                }
+                await ctx.SaveChangesAsync();
+            }
 
             res.canRead = CanRead(actions);
             res.canWrite = CanWrite(actions);

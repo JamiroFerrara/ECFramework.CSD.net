@@ -23,8 +23,8 @@ public partial class EntityController<E> : CSDFrameworkPMSPatch.CSDController wh
     [HttpGet("GetPage")]
     public virtual async Task<Response<E>> _GetPage([FromQuery] Request<E> req) => await GetPage(req, query => query);
 
-    [HttpGet("GetExcel")]
-    public virtual async Task<Response<E>> _GetExcel([FromQuery] Request<E> req) => await GetExcel(req, query => query);
+    [HttpPost("GetExcel")]
+    public virtual async Task<Response<E>> _GetExcel([FromBody] Request<E> req) => await GetExcel(req, query => query);
 
     [HttpPost("Create")]
     public virtual async Task<Response<E>> _Create([FromBody] List<E> items) => await Create(items, new Request<E>(), query => query);

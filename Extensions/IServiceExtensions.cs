@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ECFramework;
@@ -13,6 +14,13 @@ public static class IServiceExtensions
 
         Injectables.Update<IModifiable>((item, context) => item.ModDate = DateTime.Now);
         Injectables.Update<IModUser>((item, context) => item.ModUser = context.CSDContext?.user?.CodiceUtente);
+
+        //Injectables.Delete<SCA_RISSTRU>((item, context) =>
+        //{
+        //    TBBASE_H22Context ctx = context.ctx;
+        //    var res = ctx.SCA_RISSTRU_ENTITA.Where(x => x.ID_RISTRU == item.ID_RISTRU);
+        //    ctx.SCA_RISSTRU_ENTITA.RemoveRange(res);
+        //});
 
         Injectables.LogicalDelete<IModifiable>((item, context) => item.ModDate = DateTime.Now);
         Injectables.LogicalDelete<ISoftDeletable>((item, context) => item.DeletedAt = DateTime.Now);
