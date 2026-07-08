@@ -16,8 +16,8 @@ public interface IS3Object
 
 public class S3Object : IS3Object
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
     public string Path { get; set; }
     public string Bucket { get; set; }
     public string MimeType { get; set; }
