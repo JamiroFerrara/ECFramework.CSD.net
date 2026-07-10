@@ -57,14 +57,16 @@ class ExpressionParser
     private ExpressionNode ParseUnary()
     {
         var token = Consume();
-        return token.Type switch
+        if (token == null) return null;
+
+        if (token.Type is TokenType.Or or TokenType.And or TokenType.Not or TokenType.Contains)
         {
-            TokenType.Or => new UnaryExpression(TokenType.Or, ParseUnary()),
-            TokenType.And => new UnaryExpression(TokenType.And, ParseUnary()),
-            TokenType.Not => new UnaryExpression(TokenType.Not, ParseUnary()),
-            TokenType.Contains => new UnaryExpression(TokenType.Contains, ParseUnary()),
-            _ => ParsePrimary(token)
-        };
+            var operand = ParseUnary();
+            if (operand == null) return null; // trailing operator with no operand — discard
+            return new UnaryExpression(token.Type, operand);
+        }
+
+        return ParsePrimary(token);
     }
 
     private ExpressionNode ParsePrimary(Token token)
