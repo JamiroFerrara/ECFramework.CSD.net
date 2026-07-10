@@ -50,6 +50,39 @@ public static class IServiceExtensions
             }
         });
 
+        Injectables.GetItem(async (item, context) =>
+        {
+            IAmazonS3 client = context.s3Client;
+
+            if (item is IS3Object obj)
+                obj.url = await client.GeneratePreSignedURLAsync(obj.Id, obj.Name);
+
+            var properties = item.GetType().GetProperties();
+            foreach (var property in properties)
+            {
+                if (typeof(IS3Object).IsAssignableFrom(property.PropertyType))
+                {
+                    var s3Object = property.GetValue(item) as IS3Object;
+                    if (s3Object != null)
+                        s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name);
+                }
+                else if (property.PropertyType.IsGenericType &&
+                         typeof(IS3Object).IsAssignableFrom(property.PropertyType.GenericTypeArguments[0]))
+                {
+                    var collection = property.GetValue(item) as System.Collections.IEnumerable;
+                    if (collection != null)
+                    {
+                        foreach (var itemInCollection in collection)
+                        {
+                            var s3Object = itemInCollection as IS3Object;
+                            if (s3Object != null)
+                                s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name);
+                        }
+                    }
+                }
+            }
+        });
+
         Injectables.Delete(async (item, context) =>
         {
             IAmazonS3 client = context.s3Client;
