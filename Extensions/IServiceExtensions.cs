@@ -16,7 +16,7 @@ public static class IServiceExtensions
             foreach (var x in item)
             {
                 if (x is IS3Object obj)
-                    obj.url = await client.GeneratePreSignedURLAsync(obj.Id, obj.Name);
+                    obj.url = await client.GeneratePreSignedURLAsync(obj.Id, obj.Name, obj.MimeType);
 
                 // Use reflection to iterate over all properties of the SAMPLE_PACK object
                 var properties = x.GetType().GetProperties();
@@ -28,7 +28,7 @@ public static class IServiceExtensions
                         // Handle single IS3Object
                         var s3Object = property.GetValue(x) as IS3Object;
                         if (s3Object != null)
-                            s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name);
+                            s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name, s3Object.MimeType);
                     }
                     // Check if the property is a collection of IS3Object
                     else if (property.PropertyType.IsGenericType &&
@@ -42,7 +42,7 @@ public static class IServiceExtensions
                             {
                                 var s3Object = itemInCollection as IS3Object;
                                 if (s3Object != null)
-                                    s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name);
+                                    s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name, s3Object.MimeType);
                             }
                         }
                     }
@@ -55,7 +55,7 @@ public static class IServiceExtensions
             IAmazonS3 client = context.s3Client;
 
             if (item is IS3Object obj)
-                obj.url = await client.GeneratePreSignedURLAsync(obj.Id, obj.Name);
+                obj.url = await client.GeneratePreSignedURLAsync(obj.Id, obj.Name, obj.MimeType);
 
             var properties = item.GetType().GetProperties();
             foreach (var property in properties)
@@ -64,7 +64,7 @@ public static class IServiceExtensions
                 {
                     var s3Object = property.GetValue(item) as IS3Object;
                     if (s3Object != null)
-                        s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name);
+                        s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name, s3Object.MimeType);
                 }
                 else if (property.PropertyType.IsGenericType &&
                          typeof(IS3Object).IsAssignableFrom(property.PropertyType.GenericTypeArguments[0]))
@@ -76,7 +76,7 @@ public static class IServiceExtensions
                         {
                             var s3Object = itemInCollection as IS3Object;
                             if (s3Object != null)
-                                s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name);
+                                s3Object.url = await client.GeneratePreSignedURLAsync(s3Object.Id, s3Object.Name, s3Object.MimeType);
                         }
                     }
                 }

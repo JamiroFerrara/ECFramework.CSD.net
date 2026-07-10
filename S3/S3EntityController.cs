@@ -59,8 +59,9 @@ public partial class EntityController<E> : Controller where E : class, new()
                 DisablePayloadSigning = true,
                 DisableDefaultChecksumValidation = true //NOTE: This is disabled, not needed for putRequest
             };
-            // Cache at Cloudflare edge for 1 year
-            putRequest.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
+            // Cache at Cloudflare edge for 1 year (images only — immutable breaks audio seeking)
+            if (s3Item.MimeType?.StartsWith("image/") == true)
+                putRequest.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
 
             putRequest.UploadProgressEvent += async (s, e) =>
             {

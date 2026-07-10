@@ -24,10 +24,10 @@ public static class S3Service
             new AmazonS3Client(S3Configuration.AccessKey, S3Configuration.SecretKey, s3Config));
     }
 
-    public static Task<string> GeneratePreSignedURLAsync(this IAmazonS3 client, Guid objectId, string objectName)
+    public static Task<string> GeneratePreSignedURLAsync(this IAmazonS3 client, Guid objectId, string objectName, string mimeType = null)
     {
-        // Fast path: construct URL from CDN domain — no R2 S3 API call
-        if (!string.IsNullOrEmpty(S3Configuration.PublicUrl))
+        // Fast path: public CDN URL for images only — audio/files need S3 headers for streaming
+        if (!string.IsNullOrEmpty(S3Configuration.PublicUrl) && mimeType?.StartsWith("image/") == true)
             return Task.FromResult(GetPublicUrl(objectId, objectName));
 
         return GeneratePreSignedURLInternalAsync(client, objectId, objectName);
@@ -35,7 +35,7 @@ public static class S3Service
 
     public static string GetPublicUrl(Guid objectId, string objectName)
     {
-        return $"{S3Configuration.PublicUrl.TrimEnd('/')}/{objectId}/{objectName}";
+        return $"{S3Configuration.PublicUrl.TrimEnd('/')}/{objectId}/{Uri.EscapeDataString(objectName)}";
     }
 
     private static async Task<string> GeneratePreSignedURLInternalAsync(IAmazonS3 client, Guid objectId, string objectName)
