@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-
+using System.Linq;
+using System.Reflection;
 public static class Injectables
 {
     // A list of generic actions that can apply to any entity type
@@ -52,4 +53,19 @@ public static class Injectables
     public static void Create<T>(Action<T, dynamic> action) => AddAction(createActions, action);
     public static void Update<T>(Action<T, dynamic> action) => AddAction(updateActions, action);
     public static void LogicalDelete<T>(Action<T, dynamic> action) => AddAction(logicalDeleteActions, action);
+
+    public static void RegisterInjectables()
+    {
+        var assembly = Assembly.GetEntryAssembly();
+        var registrationTypes = assembly.GetTypes()
+            .Where(t => typeof(IInjectableRegistration).IsAssignableFrom(t)
+                        && !t.IsAbstract
+                        && !t.IsInterface);
+
+        foreach (var type in registrationTypes)
+        {
+            var instance = (IInjectableRegistration)Activator.CreateInstance(type);
+            instance.Register();
+        }
+    }
 }
