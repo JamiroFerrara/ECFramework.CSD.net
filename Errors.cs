@@ -13,6 +13,7 @@ public partial class EntityController<E> : Controller where E : class, new()
 
         catch (Exception e)
         {
+            res.error = e.Message + ":" + e.InnerException;
             return res;
         }
     }

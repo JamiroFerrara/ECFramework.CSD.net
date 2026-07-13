@@ -18,11 +18,12 @@ public class S3Object : IS3Object
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
+    public string Description { get; set; } = "";
     public string Path { get; set; }
     public string Bucket { get; set; }
     public string MimeType { get; set; }
 
-    [NotMapped] //NOTE: pre-sign
+    [NotMapped]
     public string url { get; set; }
 
     [NotMapped] //NOTE: upload only
