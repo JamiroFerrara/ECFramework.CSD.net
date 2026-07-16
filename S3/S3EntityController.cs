@@ -77,6 +77,7 @@ public partial class EntityController<E> : Controller where E : class, new()
         }
 
         query.Add(item);
+        Injectables.RunCreate(item, this);
 
         if (item is IModifiable modifiable)
             modifiable.ModDate = DateTime.Now;
