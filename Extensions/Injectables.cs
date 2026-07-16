@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 public static class Injectables
 {
-    // A list of generic actions that can apply to any entity type
+    // ── Sync lists (existing, unchanged) ──
     public static readonly List<Action<object, dynamic>> getItemActions = new();
     public static readonly List<Action<object, dynamic>> getPageActions = new();
     public static readonly List<Action<object, dynamic>> getExcelActions = new();
@@ -13,6 +13,12 @@ public static class Injectables
     public static readonly List<Action<object, dynamic>> updateActions = new();
     public static readonly List<Action<object, dynamic>> logicalDeleteActions = new();
 
+    // ── Async lists ──
+    public static readonly List<Func<object, dynamic, System.Threading.Tasks.Task>> createActionsAsync = new();
+    public static readonly List<Func<object, dynamic, System.Threading.Tasks.Task>> updateActionsAsync = new();
+    public static readonly List<Func<object, dynamic, System.Threading.Tasks.Task>> deleteActionsAsync = new();
+
+    // ── Sync runners ──
     public static void RunGetItem(object item, dynamic context) => getItemActions.ForEach(x => x(item, context));
     public static void RunCreate(object item, dynamic context) => createActions.ForEach(x => x(item, context));
     public static void RunGetPage<E>(List<E> page, dynamic context) => getPageActions.ForEach(x => x(page, context));
@@ -20,6 +26,25 @@ public static class Injectables
     public static void RunDelete(object item, dynamic context) => deleteActions.ForEach(x => x(item, context));
     public static void RunUpdate(object item, dynamic context) => updateActions.ForEach(x => x(item, context));
     public static void RunLogicalDelete(object item, dynamic context) => logicalDeleteActions.ForEach(x => x(item, context));
+
+    // ── Async runners ──
+    public static async System.Threading.Tasks.Task RunCreateAsync(object item, dynamic context)
+    {
+        foreach (var fn in createActionsAsync)
+            await fn(item, context);
+    }
+    public static async System.Threading.Tasks.Task RunUpdateAsync(object item, dynamic context)
+    {
+        foreach (var fn in updateActionsAsync)
+            await fn(item, context);
+    }
+    public static async System.Threading.Tasks.Task RunDeleteAsync(object item, dynamic context)
+    {
+        foreach (var fn in deleteActionsAsync)
+            await fn(item, context);
+    }
+
+    // ── Sync registration ──
 
     public static void AddAction<T>(List<Action<dynamic, dynamic>> actions, Action<T, dynamic> action)
     {
@@ -32,10 +57,7 @@ public static class Injectables
 
     public static void AddAction(List<Action<dynamic, dynamic>> actions, Action<dynamic, dynamic> action)
     {
-        actions.Add((item, context) =>
-        {
-            action(item, context);
-        });
+        actions.Add((item, context) => action(item, context));
     }
 
     public static void Delete(Action<dynamic, dynamic> action) => AddAction(deleteActions, action);
@@ -53,6 +75,22 @@ public static class Injectables
     public static void Create<T>(Action<T, dynamic> action) => AddAction(createActions, action);
     public static void Update<T>(Action<T, dynamic> action) => AddAction(updateActions, action);
     public static void LogicalDelete<T>(Action<T, dynamic> action) => AddAction(logicalDeleteActions, action);
+
+    // ── Async registration ──
+
+    public static void AddActionAsync<T>(List<Func<dynamic, dynamic, System.Threading.Tasks.Task>> actions, Func<T, dynamic, System.Threading.Tasks.Task> fn)
+    {
+        actions.Add((item, context) =>
+        {
+            if (item is T tAble)
+                return fn(tAble, context);
+            return System.Threading.Tasks.Task.CompletedTask;
+        });
+    }
+
+    public static void CreateAsync<T>(Func<T, dynamic, System.Threading.Tasks.Task> fn) => AddActionAsync(createActionsAsync, fn);
+    public static void UpdateAsync<T>(Func<T, dynamic, System.Threading.Tasks.Task> fn) => AddActionAsync(updateActionsAsync, fn);
+    public static void DeleteAsync<T>(Func<T, dynamic, System.Threading.Tasks.Task> fn) => AddActionAsync(deleteActionsAsync, fn);
 
     public static void RegisterInjectables()
     {

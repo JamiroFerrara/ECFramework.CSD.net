@@ -123,6 +123,7 @@ public partial class EntityController<E> : Controller where E : class, new()
                 {
                     query.Add(item);
                     Injectables.RunCreate(item, this);
+                    await Injectables.RunCreateAsync(item, this);
                 }
 
             await ctx.SaveChangesAsync();
@@ -153,6 +154,7 @@ public partial class EntityController<E> : Controller where E : class, new()
             if (res.item != null)
             {
                 Injectables.RunUpdate(req.Item, this);
+                await Injectables.RunUpdateAsync(req.Item, this);
                 ctx.Entry(res.item).CurrentValues.SetValues(req.Item);
                 await ctx.SaveChangesAsync();
             }
@@ -199,6 +201,7 @@ public partial class EntityController<E> : Controller where E : class, new()
                     if (found_item != null)
                     {
                         Injectables.RunDelete(found_item, this);
+                        await Injectables.RunDeleteAsync(found_item, this);
                         dbSet.Remove(found_item);
                     }
                 }
