@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Http;
 
@@ -13,7 +14,6 @@ public interface IS3Object
     string url { get; set; } // Note: Consider using PascalCase for property names
     IFormFile file { get; set; } // Note: This property is for upload only
 }
-
 public class S3Object : IS3Object
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -28,4 +28,9 @@ public class S3Object : IS3Object
 
     [NotMapped] //NOTE: upload only
     public IFormFile file { get; set; }
+
+    public IEnumerable<DownloadableFile> GetFiles()
+    {
+        yield return new DownloadableFile(Id, Name);
+    }
 }
