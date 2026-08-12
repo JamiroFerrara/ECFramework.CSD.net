@@ -76,6 +76,7 @@ public partial class EntityController<E> : Controller where E : class, new()
             await client.onMessage("Upload complete!");
         }
 
+        HydrateNavigationIds(item);
         query.Add(item);
         Injectables.RunCreate(item, this);
         await Injectables.RunCreateAsync(item, this);

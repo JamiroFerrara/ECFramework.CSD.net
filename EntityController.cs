@@ -121,6 +121,7 @@ public partial class EntityController<E> : Controller where E : class, new()
             if (items != null)
                 foreach (var item in items)
                 {
+                    HydrateNavigationIds(item);
                     query.Add(item);
                     Injectables.RunCreate(item, this);
                     await Injectables.RunCreateAsync(item, this);
