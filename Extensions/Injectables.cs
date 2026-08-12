@@ -12,6 +12,8 @@ public static class Injectables
     public static readonly List<Action<object, dynamic>> createActions = new();
     public static readonly List<Action<object, dynamic>> updateActions = new();
     public static readonly List<Action<object, dynamic>> logicalDeleteActions = new();
+    public static readonly List<Action<object, object>> errorActions = new();
+
 
     // ── Async lists ──
     public static readonly List<Func<object, dynamic, System.Threading.Tasks.Task>> createActionsAsync = new();
@@ -26,6 +28,9 @@ public static class Injectables
     public static void RunDelete(object item, dynamic context) => deleteActions.ForEach(x => x(item, context));
     public static void RunUpdate(object item, dynamic context) => updateActions.ForEach(x => x(item, context));
     public static void RunLogicalDelete(object item, dynamic context) => logicalDeleteActions.ForEach(x => x(item, context));
+
+    public static void RunError(object exception, object context) => errorActions.ForEach(x => x(exception, context));
+
 
     // ── Async runners ──
     public static async System.Threading.Tasks.Task RunCreateAsync(object item, dynamic context)
@@ -67,6 +72,8 @@ public static class Injectables
     public static void Create(Action<dynamic, dynamic> action) => AddAction(createActions, action);
     public static void Update(Action<dynamic, dynamic> action) => AddAction(updateActions, action);
     public static void LogicalDelete(Action<dynamic, dynamic> action) => AddAction(logicalDeleteActions, action);
+    public static void Error(Action<dynamic, dynamic> action) => AddAction(errorActions, action);
+
 
     public static void Delete<T>(Action<T, dynamic> action) => AddAction(deleteActions, action);
     public static void GetExcel<T>(Action<T, dynamic> action) => AddAction(getExcelActions, action);
