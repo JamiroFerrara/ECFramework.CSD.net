@@ -216,6 +216,10 @@ public partial class EntityController<E> where E : class, new()
 
             foreach (var navigation in navigations)
                 query = query.Include(navigation.Name);
+
+            // Many-to-many skip navigations are not returned by GetNavigations()
+            foreach (var skip in entityType.GetSkipNavigations())
+                query = query.Include(skip.Name);
         }
 
         return query;
