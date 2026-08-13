@@ -197,6 +197,11 @@ public partial class EntityController<E> where E : class, new()
 
         foreach (var nav in ctx.Entry(entity).Navigations)
         {
+            // Shadow navigations (the inverse side of a unidirectional M2M)
+            // have no CLR member and cannot be loaded via Load(); skip them.
+            if (nav.Metadata.PropertyInfo == null && nav.Metadata.FieldInfo == null)
+                continue;
+
             if (!nav.IsLoaded)
                 nav.Load();
         }
