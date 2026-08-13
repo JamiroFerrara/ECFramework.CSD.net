@@ -133,6 +133,10 @@ public partial class EntityController<E> where E : class, new()
             var method = type.GetMethod("Equals", new[] { typeof(Guid) });
             return Expression.Call(propertyAccess, method, Expression.Constant(guid));
         }
+        else if (type == typeof(Guid?) && Guid.TryParse(value.ToString(), out Guid guidNullable))
+        {
+            return Expression.Equal(propertyAccess, Expression.Constant(guidNullable, typeof(Guid?)));
+        }
         else if (type == typeof(DateTime) || type == typeof(DateTime?))
         {
             if (DateTime.TryParse(value.ToString(), out DateTime dateValue))
