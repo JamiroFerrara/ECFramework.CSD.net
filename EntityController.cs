@@ -145,15 +145,23 @@ public partial class EntityController<E> : Controller where E : class, new()
             query = action(query);
             DbSet<E> dbSet = (DbSet<E>)query;
 
-            // If there are filters, dynamically apply them
+            // Find the entity to update: by Expressions filter, else by Item.Id.
             if (req.Expressions != null && req.Expressions.Count() > 0 && req.Items == null)
             {
                 query = ApplyWhere(query, req.Expressions, null, "", true);
                 res.item = query.FirstOrDefault();
             }
+            else if (req.Item != null)
+            {
+                var id = GetEntityId(req.Item);
+                if (id.HasValue && id.Value != Guid.Empty)
+                    res.item = ctx.Find<E>(id.Value);
+            }
 
             if (res.item != null)
             {
+                HydrateNavigationIds(req.Item);
+                SyncNavigationCollections(req.Item, res.item);
                 Injectables.RunUpdate(req.Item, this);
                 await Injectables.RunUpdateAsync(req.Item, this);
                 ctx.Entry(res.item).CurrentValues.SetValues(req.Item);
@@ -166,6 +174,57 @@ public partial class EntityController<E> : Controller where E : class, new()
             // res.canWrite = CanWrite(actions);
 
             res.item = req.Item;
+            return res;
+        });
+    }
+
+    [NonAction]
+    public virtual async Task<Response<E>> Upsert(E item, Func<DbSet<E>, DbSet<E>> action)
+    {
+        return await Try<Response<E>>(async () =>
+        {
+            var ctx = this.ctx;
+            var res = new Response<E>();
+
+            // File-backed entities are created via Upload (new S3 object), so a
+            // generic create-or-update would silently corrupt them.
+            if (typeof(S3Object).IsAssignableFrom(typeof(E)))
+                throw new Exception($"Upsert is not supported for file-backed entity {typeof(E).Name}");
+
+            var id = GetEntityId(item);
+
+            // Empty/absent id → create.
+            if (id == null || id.Value == Guid.Empty)
+            {
+                this.CheckReflectiveId(item);
+                HydrateNavigationIds(item);
+
+                DbSet<E> dbSet = ctx.Set<E>();
+                dbSet = action(dbSet);
+                dbSet.Add(item);
+
+                Injectables.RunCreate(item, this);
+                await Injectables.RunCreateAsync(item, this);
+                await ctx.SaveChangesAsync();
+
+                res.item = item;
+                return res;
+            }
+
+            // Id given must already exist — a stale or mistyped id is an error.
+            var existing = ctx.Find<E>(id.Value);
+            if (existing == null)
+                throw new Exception($"{typeof(E).Name} with Id {id.Value} was not found");
+
+            HydrateNavigationIds(item);
+            SyncNavigationCollections(item, existing);
+            Injectables.RunUpdate(item, this);
+            await Injectables.RunUpdateAsync(item, this);
+
+            ctx.Entry(existing).CurrentValues.SetValues(item);
+            await ctx.SaveChangesAsync();
+
+            res.item = item;
             return res;
         });
     }

@@ -61,4 +61,36 @@ public partial class EntityController<E> where E : class, new()
             }
         }
     }
+
+    /// <summary>
+    /// Copies [NavigationIds] collection navigations from the (deserialized)
+    /// source item onto the tracked target, so updates replace the target's
+    /// many-to-many associations rather than appending to them.
+    /// </summary>
+    [NonAction]
+    public void SyncNavigationCollections(object source, object target)
+    {
+        if (source == null || target == null)
+            return;
+
+        foreach (var prop in source.GetType().GetProperties())
+        {
+            var attr = prop.GetCustomAttribute<NavigationIdsAttribute>();
+            if (attr == null)
+                continue;
+
+            var nav = source.GetType().GetProperty(attr.Navigation);
+            if (nav == null)
+                continue;
+
+            var sourceCollection = nav.GetValue(source) as IList;
+            var targetCollection = nav.GetValue(target) as IList;
+            if (sourceCollection == null || targetCollection == null)
+                continue;
+
+            targetCollection.Clear();
+            foreach (var item in sourceCollection)
+                targetCollection.Add(item);
+        }
+    }
 }

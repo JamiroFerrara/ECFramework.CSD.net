@@ -26,6 +26,9 @@ public partial class EntityController<E> where E : class, new()
     [HttpPatch("Update")]
     public async Task<Response<E>> _Update([FromBody] Request<E> req) => await Update(req, query => query);
 
+    [HttpPost("Upsert")]
+    public virtual async Task<Response<E>> _Upsert([FromBody] E item) => await Upsert(item, query => query);
+
     [HttpDelete("Delete")]
     public virtual async Task<Response<E>> _Delete([FromQuery] Request<E> req, [FromBody] List<E>? items = null) { req.Items = items; return await Delete(req, query => query); }
 
@@ -314,6 +317,20 @@ public partial class EntityController<E> where E : class, new()
 
 
         return item;
+    }
+
+    [NonAction]
+    public Guid? GetEntityId(E item)
+    {
+        if (item == null) return null;
+
+        var idProperty = item.GetType().GetProperty("Id");
+        if (idProperty == null) return null;
+
+        var value = idProperty.GetValue(item);
+        if (value is Guid guid) return guid;
+        if (value is string s && Guid.TryParse(s, out var parsed)) return parsed;
+        return null;
     }
 }
 
