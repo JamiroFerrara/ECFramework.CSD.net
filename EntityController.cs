@@ -38,7 +38,7 @@ public partial class EntityController<E> : Controller where E : class, new()
                 res.item = new E();
 
             Injectables.RunGetItem(res.item, this);
-
+            HydrateNavigationIdsString(res.item);
             // res.canRead = CanRead(actions);
             // res.canWrite = CanWrite(actions);
 
@@ -75,7 +75,8 @@ public partial class EntityController<E> : Controller where E : class, new()
                 .ToListAsync()) as List<E>;
 
             Injectables.RunGetPage(res.items, this);
-
+            foreach (var item in res.items)
+                HydrateNavigationIdsString(item);
             var count = query.Count();
 
             var size = ((decimal)count / req.PageSize) ?? new decimal(1);
@@ -160,7 +161,7 @@ public partial class EntityController<E> : Controller where E : class, new()
 
             if (res.item != null)
             {
-                HydrateNavigationIds(req.Item);
+                LoadNavigations(res.item);
                 SyncNavigationCollections(req.Item, res.item);
                 Injectables.RunUpdate(req.Item, this);
                 await Injectables.RunUpdateAsync(req.Item, this);
@@ -216,7 +217,7 @@ public partial class EntityController<E> : Controller where E : class, new()
             if (existing == null)
                 throw new Exception($"{typeof(E).Name} with Id {id.Value} was not found");
 
-            HydrateNavigationIds(item);
+            LoadNavigations(existing);
             SyncNavigationCollections(item, existing);
             Injectables.RunUpdate(item, this);
             await Injectables.RunUpdateAsync(item, this);
