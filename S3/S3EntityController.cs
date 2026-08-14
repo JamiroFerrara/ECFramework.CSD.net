@@ -27,13 +27,13 @@ public partial class EntityController<E> : Controller where E : class, new()
         //BUG: Context disappears in Try(() => ) for some fucking reason
 
         if (item is null)
-            throw new Exception("Entity must be not null");
+            return new Response<E> { error = "Entity must be not null" };
 
         if (item is not S3Object s3Item)
-            throw new Exception("Entity must be a S3Object");
+            return new Response<E> { error = "Entity must be a S3Object" };
 
         if (s3Item.file == null || s3Item.file.Length == 0)
-            throw new Exception("One of the files is empty");
+            return new Response<E> { error = "One of the files is empty" };
 
         var res = new Response<E>();
 
