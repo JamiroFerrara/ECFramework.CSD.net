@@ -30,6 +30,10 @@ public static class S3Service
         if (!string.IsNullOrEmpty(S3Configuration.PublicUrl) && mimeType?.StartsWith("image/") == true)
             return Task.FromResult(GetPublicUrl(objectId, objectName));
 
+        // TODO: non-image objects (video/files — e.g. hero slides, audio, gallery)
+        // fall through to a 15-minute pre-signed URL below, so long-lived pages break
+        // once the link expires. Add a public/CDN path for non-image objects to make
+        // these URLs durable.
         return GeneratePreSignedURLInternalAsync(client, objectId, objectName);
     }
 
