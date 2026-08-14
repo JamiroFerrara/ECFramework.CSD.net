@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 //NOTE: Error routing goes here
 public partial class EntityController<E> : Controller where E : class, new()
 {
-[NonAction] //TODO: This should become async by default
+[NonAction] 
     public async Task<R> Try<R>(Func<Task<R>> action) where R : Response<E>, new()
     {
         var res = new R();
