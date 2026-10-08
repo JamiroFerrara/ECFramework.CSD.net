@@ -159,11 +159,22 @@ public partial class EntityController<E> where E : class, new()
         }
         else if (type == typeof(string) && value is string stringValue)
         {
-            var method = typeof(string).GetMethod(equals ? "Equals" : "Contains", new[] { typeof(string) });
-            if (equality_only)
-                method = typeof(string).GetMethod("Equals", new[] { typeof(string) });
+            if (equals || equality_only)
+            {
+                var equalsMethod = typeof(string).GetMethod("Equals", new[] { typeof(string) });
 
-            return Expression.Call(propertyAccess, method, Expression.Constant(stringValue));
+                return Expression.Call(propertyAccess, equalsMethod, Expression.Constant(stringValue));
+            }
+
+            //NOTE: Searches are always case-insensitive. EF translates
+            //lower(x).Contains(lower(v)) to strpos(lower(x), lower(v)) > 0,
+            //which matches regardless of the stored casing.
+            var toLower = typeof(string).GetMethod("ToLower", Type.EmptyTypes);
+            var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+            var loweredProperty = Expression.Call(propertyAccess, toLower);
+            var loweredValue = Expression.Constant(stringValue.ToLower());
+
+            return Expression.Call(loweredProperty, containsMethod, loweredValue);
         }
         else
         {
