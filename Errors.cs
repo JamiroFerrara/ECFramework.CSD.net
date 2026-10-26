@@ -13,6 +13,14 @@ public partial class EntityController<E> : Controller where E : class, new()
 
         catch (Exception e)
         {
+            // An error body must never be stored or revalidated: the catalogue
+            // ETag is derived from (count, updated) and would otherwise be the
+            // same as the successful body's, so a client could revalidate a
+            // failed response and be answered 304 for a body it never received.
+            Response.Headers["Cache-Control"] = "no-store";
+            Response.Headers.Remove("ETag");
+            Response.Headers.Remove("Vary");
+
             res.error = e.Message + ":" + e.InnerException;
             Injectables.RunError(e, this);
             return res;
