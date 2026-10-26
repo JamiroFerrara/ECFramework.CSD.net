@@ -8,6 +8,13 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 public class RequestHydrationFilter : ActionFilterAttribute
 {
+    /// <summary>
+    /// Largest page the API will serve. `PageSize=-1` used to mean "everything"
+    /// (Take(-1) drops the limit); a catalogue read now clamps to this instead,
+    /// so callers that need every row page through the result.
+    /// </summary>
+    private const int MaxPageSize = 200;
+
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
     {
         Converters = { new JsonElementConverter(), new GuidConverter() }
@@ -24,7 +31,10 @@ public class RequestHydrationFilter : ActionFilterAttribute
         if (context.ActionArguments.Values.FirstOrDefault() is not IRequest iRequest) return; //Is the first param of type IRequest?
         if (context.Controller is not ControllerBase controller) return; //Controller must be of type controller base
 
-        if (iRequest.PageSize == -1) iRequest.PageSize = 9999999;
+        // Normalise the page size here, not per controller: -1 (and anything
+        // above the cap) means a full page, never the whole table.
+        if (iRequest.PageSize is int pageSize && (pageSize < 1 || pageSize > MaxPageSize))
+            iRequest.PageSize = MaxPageSize;
 
         //NOTE: Parses query string values
         var parsed = new List<string>();

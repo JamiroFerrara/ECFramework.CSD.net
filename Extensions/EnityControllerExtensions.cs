@@ -1,10 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
@@ -12,10 +18,12 @@ using Newtonsoft.Json.Linq;
 public partial class EntityController<E> where E : class, new()
 {
     [HttpGet("GetItem")]
-    public virtual async Task<Response<E>> _GetItem([FromQuery] Request<E> req) => await GetItem(req, query => query);
+    public virtual async Task<ActionResult<Response<E>>> _GetItem([FromQuery] Request<E> req)
+        => NoBodyIfCached(await GetItem(req, query => query));
 
     [HttpGet("GetPage")]
-    public virtual async Task<Response<E>> _GetPage([FromQuery] Request<E> req) => await GetPage(req, query => query);
+    public virtual async Task<ActionResult<Response<E>>> _GetPage([FromQuery] Request<E> req)
+        => NoBodyIfCached(await GetPage(req, query => query));
 
     [HttpGet("GetExcel")]
     public virtual async Task<Response<E>> _GetExcel([FromQuery] Request<E> req) => await GetExcel(req, query => query);
@@ -346,6 +354,156 @@ public partial class EntityController<E> where E : class, new()
         if (value is Guid guid) return guid;
         if (value is string s && Guid.TryParse(s, out var parsed)) return parsed;
         return null;
+    }
+
+    // ── Catalogue response caching ────────────────────────────────────
+    // Public catalogue reads change seldom and are the hot path, so they are
+    // cacheable for a minute at the edge and revalidate for ten more. Only the
+    // controllers whose rows are public catalogue data take part: User, Cart
+    // and the other per-session entities stay uncached, and so does anything on
+    // an admin or credential-carrying route.
+    private const string CatalogueCacheControl = "public, max-age=60, stale-while-revalidate=600";
+
+    private static readonly HashSet<string> CatalogueControllers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Asset", "Audio", "Artist", "Entity", "Event", "Hero", "Picture",
+        "Rig", "SamplePack", "SectionVisibility", "Tag", "Tutorial", "Video", "VinylRelease",
+    };
+
+    [NonAction]
+    private bool CanCacheCatalogueRead()
+    {
+        if (ControllerContext?.ActionDescriptor is not ControllerActionDescriptor descriptor)
+            return false;
+
+        // Only the two plain reads: GetExcel and custom actions keep their own
+        // response semantics.
+        if (descriptor.ActionName != nameof(_GetPage) && descriptor.ActionName != nameof(_GetItem))
+            return false;
+
+        if (!CatalogueControllers.Contains(descriptor.ControllerName))
+            return false;
+
+        // A credential-bearing request is not anonymous — the admin and account
+        // views hit the same controllers with a Clerk token attached — so it is
+        // never marked publicly cacheable.
+        if (Request.Headers.ContainsKey("Authorization") || Request.Headers.ContainsKey("X-Clerk-Id"))
+            return false;
+
+        var path = Request.Path.Value ?? string.Empty;
+        if (path.Contains("admin", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        foreach (var key in Request.Query.Keys)
+            if (key.Contains("token", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Writes the catalogue freshness headers and reports whether the caller's
+    /// `If-None-Match` already holds this representation (then the response is
+    /// answered 304 and carries no body).
+    /// </summary>
+    [NonAction]
+    private bool WriteCatalogueCacheHeaders(string etag)
+    {
+        Response.Headers["Cache-Control"] = CatalogueCacheControl;
+        // The cache decision itself depends on the credentials, so a proxy must
+        // keep authenticated requests out of the anonymous entry.
+        Response.Headers["Vary"] = "Authorization, X-Clerk-Id";
+        Response.Headers["ETag"] = etag;
+
+        var ifNoneMatch = Request.Headers["If-None-Match"].ToString();
+        if (string.IsNullOrEmpty(ifNoneMatch))
+            return false;
+
+        var matched = ifNoneMatch
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(tag => tag == "*" || string.Equals(tag, etag, StringComparison.Ordinal));
+
+        if (matched)
+            Response.StatusCode = StatusCodes.Status304NotModified;
+
+        return matched;
+    }
+
+    /// <summary>
+    /// A 304 must not carry the response object: the action results hand back a
+    /// bodiless status instead.
+    /// </summary>
+    [NonAction]
+    private ActionResult<Response<E>> NoBodyIfCached(Response<E> res)
+    {
+        if (Response.StatusCode == StatusCodes.Status304NotModified)
+            return StatusCode(StatusCodes.Status304NotModified);
+
+        return res;
+    }
+
+    [NonAction]
+    private static string BuildCatalogueEtag(int count, DateTime? updated, Guid? id = null)
+    {
+        var raw = updated.HasValue
+            ? string.Create(CultureInfo.InvariantCulture, $"{count}:{updated.Value.Ticks}")
+            : count.ToString(CultureInfo.InvariantCulture);
+
+        if (id.HasValue)
+            raw = string.Create(CultureInfo.InvariantCulture, $"{raw}:{id.Value}");
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
+        return $"\"{Convert.ToHexString(hash)}\"";
+    }
+
+    [NonAction]
+    private static async Task<string> BuildCatalogueEtagAsync(IQueryable<E> query, int count, CancellationToken token)
+        => BuildCatalogueEtag(count, await MaxUpdatedAsync(query, token));
+
+    /// <summary>
+    /// The newest timestamp on the queried set, used as the freshness half of
+    /// the ETag. AUDIO and PICTURE carry none, so those entities fall back to
+    /// the row count.
+    /// </summary>
+    [NonAction]
+    private static async Task<DateTime?> MaxUpdatedAsync(IQueryable<E> query, CancellationToken token)
+    {
+        var property = TimestampProperty(typeof(E));
+        if (property == null)
+            return null;
+
+        var parameter = Expression.Parameter(typeof(E), "e");
+        Expression access = Expression.Property(parameter, property);
+        if (access.Type != typeof(DateTime?))
+            access = Expression.Convert(access, typeof(DateTime?));
+
+        var selector = Expression.Lambda<Func<E, DateTime?>>(access, parameter);
+        return await query.Select(selector).MaxAsync(token);
+    }
+
+    [NonAction]
+    private static DateTime? UpdatedTimestampOf(object? item)
+    {
+        if (item == null)
+            return null;
+
+        var property = TimestampProperty(item.GetType());
+        return property?.GetValue(item) as DateTime?;
+    }
+
+    [NonAction]
+    private static PropertyInfo? TimestampProperty(Type type)
+    {
+        var property = type.GetProperty("UpdatedAt")
+            ?? type.GetProperty("ModDate")
+            ?? type.GetProperty("CreatedAt");
+
+        if (property == null)
+            return null;
+
+        return property.PropertyType == typeof(DateTime) || property.PropertyType == typeof(DateTime?)
+            ? property
+            : null;
     }
 }
 

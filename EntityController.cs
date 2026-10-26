@@ -30,12 +30,22 @@ public partial class EntityController<E> : Controller where E : class, new()
             query = ApplyIncludes(query, ctx);
             query = ApplyOrderBy(query, req.OrderBy);
 
+            var token = HttpContext?.RequestAborted ?? CancellationToken.None;
+
             res.item = await query
                 .AsNoTracking()
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(token);
+
+            var found = res.item != null;
 
             if (res.item == null)
                 res.item = new E();
+
+            // Catalogue reads answer 304 without paying for the S3 presigns: the
+            // ETag carries the row and its updated timestamp.
+            if (CanCacheCatalogueRead() &&
+                WriteCatalogueCacheHeaders(BuildCatalogueEtag(found ? 1 : 0, found ? UpdatedTimestampOf(res.item) : null, found ? GetEntityId(res.item) : null)))
+                return res;
 
             Injectables.RunGetItem(res.item, this);
             HydrateNavigationIdsString(res.item);
@@ -68,16 +78,29 @@ public partial class EntityController<E> : Controller where E : class, new()
 
             query = action(query);
 
+            var token = HttpContext?.RequestAborted ?? CancellationToken.None;
+
+            // Counted before the page query so a revalidating request can be
+            // answered with 304 before any rows are read.
+            var count = await query.CountAsync(token);
+
+            if (CanCacheCatalogueRead() &&
+                WriteCatalogueCacheHeaders(await BuildCatalogueEtagAsync(query, count, token)))
+                return res;
+
+            // Split query: AUDIO carries three collection navigations, so the
+            // single-query join multiplies rows and materialises a cartesian
+            // before de-duplicating it in memory.
             res.items = (await query
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Skip((int)(req.Page * req.PageSize))
                 .Take((int)req.PageSize)
-                .ToListAsync()) as List<E>;
+                .ToListAsync(token)) as List<E>;
 
             Injectables.RunGetPage(res.items, this);
             foreach (var item in res.items)
                 HydrateNavigationIdsString(item);
-            var count = query.Count();
 
             var size = ((decimal)count / req.PageSize) ?? new decimal(1);
             res.totalPages = (int)Math.Ceiling(size);
