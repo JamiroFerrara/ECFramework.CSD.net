@@ -237,15 +237,21 @@ public partial class EntityController<E> where E : class, new()
 
         if (entityType != null)
         {
-            // Get all navigation properties (i.e., relationships) for the entity
+            // Get all navigation properties (i.e., relationships) for the entity.
+            // Shadow navigations have no CLR property: nothing can read them, they
+            // never reach the JSON, and a split query cannot materialise their
+            // collection (EF throws a NullReferenceException in its
+            // collection accessor), so they are left out of the include set.
             var navigations = entityType.GetNavigations();
 
             foreach (var navigation in navigations)
-                query = query.Include(navigation.Name);
+                if (navigation.PropertyInfo != null)
+                    query = query.Include(navigation.Name);
 
             // Many-to-many skip navigations are not returned by GetNavigations()
             foreach (var skip in entityType.GetSkipNavigations())
-                query = query.Include(skip.Name);
+                if (skip.PropertyInfo != null)
+                    query = query.Include(skip.Name);
         }
 
         return query;
