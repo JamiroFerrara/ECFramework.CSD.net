@@ -88,12 +88,9 @@ public partial class EntityController<E> : Controller where E : class, new()
                 WriteCatalogueCacheHeaders(await BuildCatalogueEtagAsync(query, count, token)))
                 return res;
 
-            // Split query: AUDIO carries three collection navigations, so the
-            // single-query join multiplies rows and materialises a cartesian
-            // before de-duplicating it in memory.
+            // Single query: one round-trip, the join de-duplicates in memory.
             res.items = (await query
                 .AsNoTracking()
-                .AsSplitQuery()
                 .Skip((int)(req.Page * req.PageSize))
                 .Take((int)req.PageSize)
                 .ToListAsync(token)) as List<E>;
